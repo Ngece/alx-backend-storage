@@ -1,4 +1,4 @@
---Desc: creates a stored procedure that computesz and stores the average score for a student
+-- Desc: creates a stored procedure that computesz and stores the average score for a student
 
 DELIMITER $$
 
