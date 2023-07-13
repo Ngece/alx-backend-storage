@@ -1,7 +1,6 @@
 -- Desc: creates a stored procedure that computesz and stores the average score for a student
 
 DELIMITER $$
-
 CREATE PROCEDURE ComputeAverageScoreForUser(IN user_id INT)
 BEGIN
     DECLARE average_score FLOAT;
