@@ -1,6 +1,6 @@
 --Desc: cfreates a stored procedure that adds a new correction for student
 
-DELIMITER $$
+DELIMITER |
 CREATE PROCEDURE AddBonus (
     IN user_id int,
     IN project_name varchar(255),
@@ -14,4 +14,4 @@ BEGIN
     INSERT INTO corrections (user_id, project_id, score)
     VALUES (user_id, (SELECT id FROM projects WHERE name = project_name), score);
 END;
-DELIMITER ;
+|
