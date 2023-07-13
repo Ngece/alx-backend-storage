@@ -1,4 +1,4 @@
---Desc: creates a trigger that resets the attribute valid_email whenever the email is updated
+-- Desc: creates a trigger that resets the attribute valid_email whenever the email is updated
 
 DELIMITER $$
 CREATE TRIGGER valid_email
