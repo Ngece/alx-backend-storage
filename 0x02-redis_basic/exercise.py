@@ -2,31 +2,38 @@
 """ Module for using redis in Python """
 
 import redis
-import uuid
-from typing import Union, Callable, Optional
+from typing import Union, Optional, Callable
+from uuid import uuid4, UUID
 from functools import wraps
 
+
 def count_calls(method: Callable) -> Callable:
-    """ Count the number of times a method is called """
+    """ Decortator for counting how many times a function
+    has been called """
+
     key = method.__qualname__
 
     @wraps(method)
-    def wrapper(self, *args, **kwds):
-        """ Wrapper function """
+    def wrapper(self, *args, **kwargs):
+        """ Wrapper for decorator functionality """
         self._redis.incr(key)
-        return method(self, *args, **kwds)
+        return method(self, *args, **kwargs)
 
     return wrapper
 
+
 def call_history(method: Callable) -> Callable:
-    """ Store the history of inputs and outputs for a particular function """
+    """ Decorator to store the history of inputs and
+    outputs for a particular function.
+    """
+
     @wraps(method)
-    def wrapper(self, *args, **kwds):
-        """ Wrapper function """
+    def wrapper(self, *args, **kwargs):
+        """ Wrapper for decorator functionality """
         input = str(args)
         self._redis.rpush(method.__qualname__ + ":inputs", input)
 
-        output = str(method(self, *args, **kwds))
+        output = str(method(self, *args, **kwargs))
         self._redis.rpush(method.__qualname__ + ":outputs", output)
 
         return output
@@ -34,101 +41,71 @@ def call_history(method: Callable) -> Callable:
     return wrapper
 
 
-def replay(method: Callable):
-    """ Display the history of calls of a particular function """
+def replay(fn: Callable):
+    """Display the history of calls of a particular function"""
     r = redis.Redis()
-    name = method.__qualname__
-    count = r.get(name).decode('utf-8')
-    inputs = r.lrange(name + ":inputs", 0, -1)
-    outputs = r.lrange(name + ":outputs", 0, -1)
+    f_name = fn.__qualname__
+    n_calls = r.get(f_name)
+    try:
+        n_calls = n_calls.decode('utf-8')
+    except Exception:
+        n_calls = 0
+    print(f'{f_name} was called {n_calls} times:')
 
-    print("{} was called {} times:".format(name, count))
-    for i, o in zip(inputs, outputs):
-        print("{}(*{}) -> {}".format(name, i.decode('utf-8'),
-                                     o.decode('utf-8')))
-    return method
+    ins = r.lrange(f_name + ":inputs", 0, -1)
+    outs = r.lrange(f_name + ":outputs", 0, -1)
+
+    for i, o in zip(ins, outs):
+        try:
+            i = i.decode('utf-8')
+        except Exception:
+            i = ""
+        try:
+            o = o.decode('utf-8')
+        except Exception:
+            o = ""
+
+        print(f'{f_name}(*{i}) -> {o}')
 
 
 class Cache:
-    """ Cache class """
+    """ Class for implementing a Cache """
+
     def __init__(self):
-        """ Constructor """
+        """ Constructor Method """
         self._redis = redis.Redis()
         self._redis.flushdb()
 
     @call_history
     @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
-        """ Generate a random key, store the input data in Redis using the
-            random key and return the key
+        """Store the input data in Redis using a
+        random key and return the key.
         """
-        key = str(uuid.uuid4())
-        self._redis.mset({key: data})
-        return key
+        random_key = str(uuid4())
+        self._redis.set(random_key, data)
 
-    def get(self, key: str, fn: Optional[Callable] = None) -> Union[str,
-                                                        bytes, int, float]:
-        """ Convert data back to desired format """
-        data = self._redis.get(key)
+        return random_key
+
+    def get(self, key: str,
+            fn: Optional[Callable] = None) -> Union[str, bytes, int, float]:
+        """ Reading from Redis and recovering original type """
+        value = self._redis.get(key)
         if fn:
-            data = fn(data)
-        return data
+            value = fn(value)
+
+        return value
 
     def get_str(self, key: str) -> str:
-        """ Convert data to string """
-        return self.get(key, str)
+        """ Parameterizes a value from redis to str """
+        value = self._redis.get(key)
+        return value.decode("utf-8")
 
     def get_int(self, key: str) -> int:
-        """ Convert data to int """
-        return self.get(key, int)
-    
-    def get_str_list(self, key: str) -> list:
-        """ Convert data to list """
-        return self.get(key, list)
-    
-    def get_int_list(self, key: str) -> list:
-        """ Convert data to list """
-        return self.get(key, lambda d: [int(e) for e in d])
-    
-    @replay
-    def fibonacci(self, n: int) -> int:
-        """ Compute the nth value of the Fibonacci sequence """
-        if n <= 1:
-            return n
-        return self.fibonacci(n - 1) + self.fibonacci(n - 2)
-    
-    def replay(self):
-        """ Display the history of calls of a particular function """
-        r = redis.Redis()
-        name = self.fibonacci.__qualname__
-        count = r.get(name).decode('utf-8')
-        inputs = r.lrange(name + ":inputs", 0, -1)
-        outputs = r.lrange(name + ":outputs", 0, -1)
-
-        print("{} was called {} times:".format(name, count))
-        for i, o in zip(inputs, outputs):
-            print("{}(*{}) -> {}".format(name, i.decode('utf-8'),
-                                         o.decode('utf-8')))
-            
-if __name__ == "__main__":
-    cache = Cache()
-    cache.store("foo")
-    cache.store("bar")
-    cache.store(42)
-    cache.store([1, 2, 3])
-    cache.store({"n": 42, "foo": "bar"})
-    print(cache.get_str("foo"))
-    print(cache.get_str("does_not_exist"))
-    print(cache.get_int("foo"))
-    print(cache.get_int("does_not_exist"))
-    print(cache.get_str_list("foo"))
-    print(cache.get_str_list("does_not_exist"))
-    print(cache.get_int_list("foo"))
-    print(cache.get_int_list("does_not_exist"))
-    print(cache.store(5))
-    print(cache.store(6))
-    print(cache.store(7))
-    print(cache.store(8))
-    print(cache.store(9))
-    cache.replay()
-    
+        """ Parameterizes a value from redis to int """
+        value = self._redis.get(key)
+        try:
+            value = int(value.decode("utf-8"))
+        except Exception:
+            value = 0
+        return value
