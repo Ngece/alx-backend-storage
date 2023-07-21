@@ -6,7 +6,6 @@ from typing import Union, Optional, Callable
 from uuid import uuid4, UUID
 from functools import wraps
 
-
 def count_calls(method: Callable) -> Callable:
     """ Decortator for counting how many times a function
     has been called """
