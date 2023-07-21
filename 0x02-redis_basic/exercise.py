@@ -6,7 +6,6 @@ import uuid
 from typing import Union, Callable, Optional
 from functools import wraps
 
-
 def count_calls(method: Callable) -> Callable:
     """ Count the number of times a method is called """
     key = method.__qualname__
@@ -18,7 +17,6 @@ def count_calls(method: Callable) -> Callable:
         return method(self, *args, **kwds)
 
     return wrapper
-
 
 def call_history(method: Callable) -> Callable:
     """ Store the history of inputs and outputs for a particular function """
@@ -69,9 +67,7 @@ class Cache:
         return key
 
     def get(self, key: str, fn: Optional[Callable] = None) -> Union[str,
-                                                                     bytes,
-                                                                     int,
-                                                                     float]:
+                                                        bytes, int, float]:
         """ Convert data back to desired format """
         data = self._redis.get(key)
         if fn:
@@ -134,5 +130,5 @@ if __name__ == "__main__":
     print(cache.store(7))
     print(cache.store(8))
     print(cache.store(9))
-    cache.reply()
+    cache.replay()
     
